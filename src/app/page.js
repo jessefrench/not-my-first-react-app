@@ -1,11 +1,13 @@
 'use client';
 
 import { useAuth } from '@/utils/context/authContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
   const [uselessFact, setUselessFact] = useState({});
   const { user } = useAuth();
+  const initialFetch = useRef(false);
+  const dbUrl = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
 
   const fetchFact = async () => {
     const response = await fetch('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en');
@@ -13,18 +15,30 @@ export default function Home() {
     setUselessFact(fact);
   };
 
-  const selectResponse = (boolean) => {
+  const selectResponse = async (boolean) => {
+    const val = boolean ? 'Yes' : 'No';
     const obj = {
       userId: user.uid,
-      permalink: uselessFact.permalink,
-      response: boolean,
+      text: uselessFact.text,
     };
+
+    await fetch(`${dbUrl}/response${val}.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(obj),
+    });
+
     fetchFact();
     return obj;
   };
 
   useEffect(() => {
-    fetchFact();
+    if (!initialFetch.current) {
+      fetchFact();
+      initialFetch.current = true;
+    }
   }, []);
 
   return (
